@@ -1,4 +1,3 @@
-const { ReturnDocument } = require("mongodb");
 const { getDB } = require("../config/connection");
 
 // Module pour récupérer l'ensemble des prosuits
@@ -49,6 +48,20 @@ module.exports.createProduct = async (req, res, next) => {
       return res.status(400).json({ error: "Invalid new product" });
     }
 
+    newProduct._id = Number(newProduct._id);
+    if (newProduct._id == null) {
+      return res.status(400).json({ error: "_id is required (number)" });
+    }
+
+    if (!Number.isFinite(newProduct._id)) {
+      return res.status(400).json({ error: "_id must be a number" });
+    }
+
+    const exists = await db
+      .collection("products")
+      .findOne({ _id: newProduct._id });
+    if (exists) return res.status(409).json({ error: "Duplicate _id" });
+
     if (newProduct.price !== undefined && newProduct.price !== null) {
       newProduct.price = Number(newProduct.price);
       if (Number.isNaN(newProduct.price)) {
@@ -91,10 +104,12 @@ module.exports.createProduct = async (req, res, next) => {
 
     const result = await db.collection("products").insertOne(newProduct);
 
+    newProduct._id = Number(newProduct._id);
+
     req.app.get("io").emit("product:created", newProduct);
 
     if (!result) res.status(500).json({ error: "Failed to create" });
-    return res.status(200).json(result);
+    return res.status(200).json(newProduct);
   } catch (err) {
     return next(err);
   }
@@ -105,6 +120,11 @@ module.exports.editProduct = async (req, res, next) => {
   try {
     const db = getDB();
     const id = Number(req.params.id);
+
+    if (Number.isNaN(id)) {
+      return res.status(400).json({ error: "Invalid id (must be a number" });
+    }
+
     const allowed = [
       "name",
       "type",
@@ -120,12 +140,8 @@ module.exports.editProduct = async (req, res, next) => {
       }
     }
 
-    if (Number.isNaN(id)) {
-      return res.status(400).json({ error: "Invalid id (must be a number" });
-    }
-
-    if (!updates) {
-      return res.status(400).json({ error: "Updates cannot be empty" });
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: "No valid fields to update" });
     }
 
     if (updates.price !== undefined && updates.price !== null) {
@@ -167,13 +183,21 @@ module.exports.editProduct = async (req, res, next) => {
 
     const result = await db
       .collection("products")
-      .updateOne({ _id: id }, { $set: updates }, { ReturnDocument: "after" });
+      .findOneAndUpdate(
+        { _id: id },
+        { $set: updates },
+        { ReturnDocument: "after" }
+      );
 
     const updated = await db.collection("products").findOne({ _id: id });
 
     if (!result) res.status(500).json({ error: "Failed to update" });
 
-    req.app.get("io").emit("product:updated", result.value);
+    console.log("emit product:updated", result);
+
+    result._id = Number(result._id);
+
+    req.app.get("io").emit("product:updated", updated);
 
     return res.status(200).json(updated);
   } catch (err) {

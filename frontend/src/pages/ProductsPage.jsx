@@ -1,4 +1,5 @@
 import * as React from 'react';
+import socket from '../tempsReel/socket.jsx';
 import {
   Container, Paper, Stack, Typography, Button, Snackbar, Alert, Divider
 } from '@mui/material';
@@ -6,6 +7,8 @@ import http from '../api/http.jsx';
 import ProductTable from '../components/ProductTable';
 import ProductFormDialog from '../components/ProductFormDialog';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { normalizeProduct, replaceById } from '../utils/normalize.jsx';
+
 
 export default function ProductsPage() {
   const [rows, setRows] = React.useState([]);
@@ -20,7 +23,7 @@ export default function ProductsPage() {
     try {
       setLoading(true);
       const { data } = await http.get('/product'); // GET /api/product
-      setRows(data);
+      setRows(Array.isArray(data) ? data.filter(Boolean).map(normalizeProduct) : []);
     } catch (e) {
       setErrorMsg(e.message);
     } finally {
@@ -30,6 +33,53 @@ export default function ProductsPage() {
 
   React.useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
+
+  React.useEffect(() => {
+    const onConnect = () => console.log('connected', socket.id);
+    const onDisconnect = () => console.log('disconnected');
+
+    socket.onAny((event, payload) => {
+      if (event.startsWith('product:')) {
+        console.log('[ws]', event, payload && payload._id, typeof payload?._id);
+      }
+    });
+
+
+
+    const onCreated = (p) => {
+      const n = normalizeProduct(p);
+      if (n._id == null) return;
+      setRows(arr => replaceById(arr, n));
+    };
+
+    const onUpdated = (p) => {
+      const n = normalizeProduct(p);
+      if (n._id == null) return;
+      setRows(arr => replaceById(arr, n));
+    };
+
+    const onDeleted = ({ _id }) => {
+      const id = Number(_id);
+      if (!Number.isFinite(id)) return;
+      setRows(arr => arr.filter(x => x && Number(x._id) !== id));
+    };
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('product:created', onCreated);
+    socket.on('product:updated', onUpdated);
+    socket.on('product:deleted', onDeleted);
+
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('product:created', onCreated);
+      socket.off('product:updated', onUpdated);
+      socket.off('product:deleted', onDeleted);
+    };
+  }, []);
+
+
   const handleCreateClick = () => { setEditing(null); setOpenForm(true); };
 
   const handleSubmit = async (payload) => {
@@ -38,11 +88,14 @@ export default function ProductsPage() {
         // PATCH partiel
         const id = editing._id;
         const { data } = await http.patch(`/product/${id}`, payload);
-        setRows(arr => arr.map(x => (x._id === id ? data : x)));
+        const prod = normalizeProduct(data);
+        setRows((arr) => replaceById(arr, prod));
         setSuccessMsg('Produit mis à jour');
       } else {
         const { data } = await http.post('/product', payload);
-        setRows((arr) => [data, ...arr]);
+        const prod = normalizeProduct(data);
+        if (prod._id == null) throw new Error("POST: API n’a pas renvoyé _id"); 
+        setRows((arr) => replaceById(arr, prod));
         setSuccessMsg('Produit créé');
       }
       setOpenForm(false);
@@ -59,7 +112,7 @@ export default function ProductsPage() {
     const p = confirm.product;
     try {
       await http.delete(`/product/${p._id}`);
-      setRows((arr) => arr.filter((x) => x._id !== p._id));
+      setRows((arr) => arr.filter((x) => x && x._id !== p._id));
       setSuccessMsg('Produit supprimé');
     } catch (e) {
       setErrorMsg(e.message);

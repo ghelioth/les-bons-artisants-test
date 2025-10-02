@@ -24,11 +24,11 @@ export default function ProductTable({ rows, onEdit, onDelete }) {
       </TableHead>
       <TableBody>
         {rows.map((p, i) => (
-          <TableRow key={p._id != null ? `prod-${String(p._id)}` : `tmp-${i}-${p?.name ?? 'no-name'}`} hover>
+          <TableRow key={p?._id != null ? `prod-${p._id}` : `tmp-${i}-${p?.name ?? 'no-name'}`} hover>
             <TableCell>{p._id}</TableCell>
             <TableCell>{p.name}</TableCell>
             <TableCell>{p.type}</TableCell>
-            <TableCell align="right">{Number(p.price).toFixed(2)}</TableCell>
+            <TableCell align="right">{Number.isFinite(Number(p.price)) ? Number(p.price).toFixed(2) : '-'}</TableCell>
             <TableCell align="center">{p.rating}</TableCell>
             <TableCell align="center">{p.warranty_years ?? '-'}</TableCell>
             <TableCell align="center">

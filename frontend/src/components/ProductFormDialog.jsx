@@ -6,8 +6,7 @@ import {
 
 /**
  * Formulaire création/édition.
- * Si ton backend EXIGE _id numérique à la création, laisse "showId" à true.
- * Si tu as l’auto-incrément côté serveur, passe showId={false}.
+ * Le backend EXIGE _id numérique à la création, "showId" est à true.
  */
 import PropTypes from 'prop-types';
 

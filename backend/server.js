@@ -1,11 +1,10 @@
 const express = require("express");
 const { createServer } = require("http");
-const { server } = require("socket.io");
+const { Server } = require("socket.io");
 const productRoutes = require("./routes/product.routes");
 require("dotenv").config({ path: "./config/.env" });
 const cors = require("cors");
 const { connectDB, closeDB } = require("./config/connection");
-const { log } = require("console");
 const app = express();
 
 app.use(cors());
@@ -18,7 +17,7 @@ app.get("/health", (req, res) => res.json({ ok: true }));
 app.use("/api/product", productRoutes);
 
 // Middleware d'erreurs (format JSON)
-app.use((err, req, res) => {
+app.use((req, res, err) => {
   console.error(err);
   res
     .status(err.status || 500)
@@ -29,24 +28,24 @@ app.use((err, req, res) => {
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: `${process.env.CLIENT_URL}`,
+    origin: process.env.CLIENT_URL,
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE"],
   },
 });
 app.set("io", io);
 
 io.on("connection", (socket) => {
-  console.log("Connected", socket.id);
-  socket.on("disconnect", () => console.log("Disconnected", socket.id));
+  console.log("[WebSocket] : connected", socket.id);
+  socket.on("disconnect", () =>
+    console.log("[WebSocket] : disconnected", socket.id)
+  );
 });
-
-httpServer.listen(process.env.PORT);
 
 // Démarre le server express
 connectDB()
   .then(() =>
-    app.listen(process.env.PORT, () => {
-      console.log("Listening on port " + process.env.PORT);
+    httpServer.listen(process.env.PORT, () => {
+      console.log("[API] : Listening on port " + process.env.PORT);
     })
   )
   .catch((err) => {
