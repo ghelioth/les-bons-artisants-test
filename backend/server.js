@@ -1,8 +1,11 @@
 const express = require("express");
+const { createServer } = require("http");
+const { server } = require("socket.io");
 const productRoutes = require("./routes/product.routes");
 require("dotenv").config({ path: "./config/.env" });
 const cors = require("cors");
 const { connectDB, closeDB } = require("./config/connection");
+const { log } = require("console");
 const app = express();
 
 app.use(cors());
@@ -21,6 +24,23 @@ app.use((err, req, res) => {
     .status(err.status || 500)
     .json({ error: { message: err.message || "Internal Server Error" } });
 });
+
+// Implémentation de socket.io
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: `${process.env.CLIENT_URL}`,
+    methods: ["GET", "POST", "PATCH", "PUT", "DELETE"],
+  },
+});
+app.set("io", io);
+
+io.on("connection", (socket) => {
+  console.log("Connected", socket.id);
+  socket.on("disconnect", () => console.log("Disconnected", socket.id));
+});
+
+httpServer.listen(process.env.PORT);
 
 // Démarre le server express
 connectDB()

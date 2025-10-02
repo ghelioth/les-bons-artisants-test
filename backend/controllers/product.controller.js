@@ -91,6 +91,8 @@ module.exports.createProduct = async (req, res, next) => {
 
     const result = await db.collection("products").insertOne(newProduct);
 
+    req.app.get("io").emit("product:created", newProduct);
+
     if (!result) res.status(500).json({ error: "Failed to create" });
     return res.status(200).json(result);
   } catch (err) {
@@ -170,6 +172,9 @@ module.exports.editProduct = async (req, res, next) => {
     const updated = await db.collection("products").findOne({ _id: id });
 
     if (!result) res.status(500).json({ error: "Failed to update" });
+
+    req.app.get("io").emit("product:updated", result.value);
+
     return res.status(200).json(updated);
   } catch (err) {
     return next(err);
@@ -189,6 +194,9 @@ module.exports.deleteProduct = async (req, res, next) => {
     const result = await db.collection("products").deleteOne({ _id: id });
 
     if (!result) res.status(404).json({ error: "Not found" });
+
+    req.app.get("io").emit("product:deleted", { _id: id });
+
     return res.status(200).json(result);
   } catch (err) {
     return next(err);
