@@ -15,7 +15,7 @@ app.get("/health", (req, res) => res.json({ ok: true }));
 app.use("/api/product", productRoutes);
 
 // Middleware d'erreurs (format JSON)
-app.use((err, req, res, _next) => {
+app.use((err, req, res) => {
   console.error(err);
   res
     .status(err.status || 500)
