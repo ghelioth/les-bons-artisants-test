@@ -1,3 +1,4 @@
+const { ReturnDocument } = require("mongodb");
 const { getDB } = require("../config/connection");
 
 // Module pour récupérer l'ensemble des prosuits
@@ -164,10 +165,12 @@ module.exports.editProduct = async (req, res, next) => {
 
     const result = await db
       .collection("products")
-      .updateOne({ _id: id }, { $set: updates });
+      .updateOne({ _id: id }, { $set: updates }, { ReturnDocument: "after" });
+
+    const updated = await db.collection("products").findOne({ _id: id });
 
     if (!result) res.status(500).json({ error: "Failed to update" });
-    return res.status(200).json(result);
+    return res.status(200).json(updated);
   } catch (err) {
     return next(err);
   }
