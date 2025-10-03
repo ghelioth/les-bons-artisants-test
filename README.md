@@ -9,22 +9,22 @@ Ce dépôt contient :
 # Configuration
 Les variables d'environnement :
  - coté server dans backend/config/.env, les valeurs à renseigner :
- **client url**
-    - CLIENT_URL = 
-**port sur lequel le serveur écoute**
-    - PORT = 
-**connexion à la base de données**
-    - MONGODB_URI = 
-    - MONGODB_DB_NAME =
-**secret pour le token**
-    - JWT_SECRET = 
-    - JWT_EXPIRES_IN = 1h
+    - **client url**
+        - CLIENT_URL = 
+    - **port sur lequel le serveur écoute**
+        - PORT = 
+    - **connexion à la base de données**
+        - MONGODB_URI = 
+        - MONGODB_DB_NAME =
+    - **secret pour le token**
+        - JWT_SECRET = 
+        - JWT_EXPIRES_IN = 1h
 
  - coté client dans src/.env, les valeurs à renseigner :
- - **API url** 
-    - VITE_API_URL=http://localhost:+port/api/
- - **Websocket url** 
-    - VITE_WS_URL=http://localhost:+port
+    - **API url** 
+        - VITE_API_URL=http://localhost:+port/api/
+    - **Websocket url** 
+        - VITE_WS_URL=http://localhost:+port
 # Authentification
  - POST /api/auth/register — crée un utilisateur et renvoie { token, user }
  - POST /api/auth/login — connecte un utilisateur et renvoie { token, user }
