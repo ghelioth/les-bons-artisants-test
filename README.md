@@ -1,10 +1,10 @@
 # Test Technique – Produits (API Node + React, Socket.IO, JWT, Redux)
 
 Ce dépôt contient :
--Une API REST Node.js/Express + MongoDB (driver natif)
--Une app React (Vite) avec Material UI, Redux Toolkit et Socket.IO pour le temps réel
--Auth JWT (login / register)
--ESLint + Prettier
+ - Une API REST Node.js/Express + MongoDB (driver natif)
+ - Une app React (Vite) avec Material UI, Redux Toolkit et Socket.IO pour le temps réel
+ - Auth JWT (login / register)
+ - ESLint + Prettier
 
 # Configuration
 Les variables d'environnement :
