@@ -36,7 +36,7 @@ transmet le token à Socket.IO (via socket.auth) pour une connexion WS protégé
 ouvre une modale LoginDialog quand l’API renvoie 401.
 
 # EndPoints
- - Base URL : http://localhost:4000/api
+ - Base URL : http://localhost:+port/api
  - GET /product — liste des produits (public)
  - GET /product/:id — détail produit (public)
  - POST /product — protégé (JWT) — crée un produit
