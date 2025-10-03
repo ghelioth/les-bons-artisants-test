@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const productRoutes = require("./routes/product.routes");
+const authRoutes = require("./routes/auth.routes");
 require("dotenv").config({ path: "./config/.env" });
 const cors = require("cors");
 const { connectDB, closeDB } = require("./config/connection");
@@ -20,6 +21,7 @@ app.use(
 app.get("/health", (req, res) => res.json({ ok: true }));
 
 app.use("/api/product", productRoutes);
+app.use("/api/auth", authRoutes);
 
 // Middleware d'erreurs (format JSON)
 app.use((req, res, err) => {

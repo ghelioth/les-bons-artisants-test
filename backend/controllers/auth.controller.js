@@ -36,14 +36,14 @@ module.exports.register = async (req, res, next) => {
       createdAt: new Date(),
     };
     const result = await db.collection("users").insertOne(newUser);
-    const user = result.ops[0];
+    const user = await db
+      .collection("users")
+      .findOne({ _id: result.insertedId });
     const token = signToken(user);
-    return res
-      .status(201)
-      .json({
-        token,
-        user: { id: user._id, name: user.name, email: user.email },
-      });
+    return res.status(201).json({
+      token,
+      user: { id: user._id, name: user.name, email: user.email },
+    });
   } catch (err) {
     return next(err);
   }
@@ -65,12 +65,10 @@ module.exports.login = async (req, res, next) => {
       return res.status(400).json({ error: "Invalid email or password" });
     }
     const token = signToken(user);
-    return res
-      .status(200)
-      .json({
-        token,
-        user: { id: user._id, name: user.name, email: user.email },
-      });
+    return res.status(200).json({
+      token,
+      user: { id: user._id, name: user.name, email: user.email },
+    });
   } catch (err) {
     return next(err);
   }

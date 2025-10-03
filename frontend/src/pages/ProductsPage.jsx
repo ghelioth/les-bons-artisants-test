@@ -3,11 +3,13 @@ import socket from '../tempsReel/socket.jsx';
 import {
   Container, Paper, Stack, Typography, Button, Snackbar, Alert, Divider
 } from '@mui/material';
-import http from '../api/http.jsx';
+import http, { getToken, setToken } from '../api/http.jsx';
 import ProductTable from '../components/ProductTable';
 import ProductFormDialog from '../components/ProductFormDialog';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { normalizeProduct, replaceById } from '../utils/normalize.jsx';
+import { connectSocket } from '../tempsReel/socket.jsx';
+import LoginDialog from '../components/LoginDialog.jsx';
 
 
 export default function ProductsPage() {
@@ -18,6 +20,40 @@ export default function ProductsPage() {
   const [openForm, setOpenForm] = React.useState(false);
   const [editing, setEditing] = React.useState(null);
   const [confirm, setConfirm] = React.useState({ open: false, product: null });
+
+  const [loginOpen, setLoginOpen] = React.useState(false);
+  const [canWrite, setCanWrite] = React.useState(!!getToken());
+
+ 
+  React.useEffect(() => {
+    if (getToken()) {
+      connectSocket();
+    }
+  }, []);
+
+  const handleLoginSuccess = (user) => {
+    setLoginOpen(false);
+    setCanWrite(true);
+    connectSocket();
+    setSuccessMsg(`Connecté ${user?.email || ''}`);
+  };
+
+  
+  const onLogout = () => {
+    setToken(null);
+    setCanWrite(false);
+    socket.disconnect();
+    setSuccessMsg('Déconnecté');
+  };
+
+  const requireAuth = () => {
+    if (!getToken()) {
+      setLoginOpen(true);
+      setErrorMsg('Veuillez vous connecter');
+      return false;
+    }
+    return true;
+  };
 
   const fetchProducts = React.useCallback(async () => {
     try {
@@ -80,15 +116,20 @@ export default function ProductsPage() {
   }, []);
 
 
-  const handleCreateClick = () => { setEditing(null); setOpenForm(true); };
+  const handleCreateClick = () => { if (!requireAuth()) return;
+    setEditing(null); setOpenForm(true); };
 
   const handleSubmit = async (payload) => {
     try {
+      if (!requireAuth()) return;
+
+
       if (editing) {
         // PATCH partiel
         const id = editing._id;
         const { data } = await http.patch(`/product/${id}`, payload);
         const prod = normalizeProduct(data);
+        if (prod._id == null) throw new Error("PATCH: API n’a pas renvoyé _id");
         setRows((arr) => replaceById(arr, prod));
         setSuccessMsg('Produit mis à jour');
       } else {
@@ -100,21 +141,32 @@ export default function ProductsPage() {
       }
       setOpenForm(false);
     } catch (e) {
+      if (e.code === 'unauthorized' || /401/.test(String(e.status))) {
+        setLoginOpen(true);
+        setErrorMsg('Veuillez vous reconnecter');
+        return;
+      }
       setErrorMsg(e.message);
     }
   };
 
-  const handleEdit = (p) => { setEditing(p); setOpenForm(true); };
+  const handleEdit = (p) => { if (!requireAuth()) return; setEditing(p); setOpenForm(true); };
 
-  const handleDelete = (p) => { setConfirm({ open: true, product: p }); };
+  const handleDelete = (p) => { if (!requireAuth()) return; setConfirm({ open: true, product: p }); };
 
   const confirmDelete = async () => {
     const p = confirm.product;
     try {
+      if (!requireAuth()) return;
       await http.delete(`/product/${p._id}`);
       setRows((arr) => arr.filter((x) => x && x._id !== p._id));
       setSuccessMsg('Produit supprimé');
     } catch (e) {
+      if (e.code === 'unauthorized' || /401/.test(String(e.status))) {
+        setLoginOpen(true);
+        setErrorMsg('Veuillez vous reconnecter');
+        return;
+      }
       setErrorMsg(e.message);
     } finally {
       setConfirm({ open: false, product: null });
@@ -126,13 +178,27 @@ export default function ProductsPage() {
       <Paper sx={{ p: 2 }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between">
           <Typography variant="h6">Produits</Typography>
-          <Button variant="contained" onClick={handleCreateClick}>Nouveau</Button>
+          <Stack direction="row" spacing={1}>
+            {!canWrite ? (
+              <Button variant="outlined" onClick={() => setLoginOpen(true)}>Se connecter</Button>
+            ) : (
+              <Button variant="outlined" onClick={onLogout}>Se déconnecter</Button>
+            )}
+            {canWrite && (
+              <Button variant="contained" onClick={handleCreateClick}>Nouveau</Button>
+            )}
+          </Stack>
         </Stack>
         <Divider sx={{ my: 2 }} />
         {loading ? (
           <Typography variant="body2" color="text.secondary">Chargement…</Typography>
         ) : (
-          <ProductTable rows={rows} onEdit={handleEdit} onDelete={handleDelete} />
+          <ProductTable
+            rows={rows}
+            canWrite={canWrite}        // (optionnel) si tu gères l’affichage des actions dans la table
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
         )}
       </Paper>
 
@@ -151,6 +217,14 @@ export default function ProductsPage() {
         content={`Supprimer "${confirm.product?.name}" ?`}
         onCancel={() => setConfirm({ open: false, product: null })}
         onConfirm={confirmDelete}
+      />
+
+      
+      {/* Login Dialog */}
+      <LoginDialog
+        open={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
       />
 
       {/* Notifications */}
