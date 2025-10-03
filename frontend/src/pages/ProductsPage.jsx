@@ -1,30 +1,51 @@
 import * as React from 'react';
-import socket from '../tempsReel/socket.jsx';
+import socket, { connectSocket } from '../tempsReel/socket.jsx';
 import {
   Container, Paper, Stack, Typography, Button, Snackbar, Alert, Divider
 } from '@mui/material';
-import http, { getToken, setToken } from '../api/http.jsx';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  selectAllProducts, selectProductsStatus, selectProductsError,
+  fetchProducts, createProduct, updateProduct, deleteProduct,
+  productsWs
+} from '../features/products/productsSlice';
+import { getToken, setToken } from '../api/http.jsx';
 import ProductTable from '../components/ProductTable';
 import ProductFormDialog from '../components/ProductFormDialog';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { normalizeProduct, replaceById } from '../utils/normalize.jsx';
-import { connectSocket } from '../tempsReel/socket.jsx';
 import LoginDialog from '../components/LoginDialog.jsx';
 
 
 export default function ProductsPage() {
-  const [rows, setRows] = React.useState([]);
-  const [loading, setLoading] = React.useState(false);
+  const dispatch = useDispatch();
+
+  // Redux state
+  const rows = useSelector(selectAllProducts);
+  const status = useSelector(selectProductsStatus);
+  const loadError = useSelector(selectProductsError);
+
+  // Local state
   const [errorMsg, setErrorMsg] = React.useState('');
   const [successMsg, setSuccessMsg] = React.useState('');
   const [openForm, setOpenForm] = React.useState(false);
   const [editing, setEditing] = React.useState(null);
   const [confirm, setConfirm] = React.useState({ open: false, product: null });
-
   const [loginOpen, setLoginOpen] = React.useState(false);
   const [canWrite, setCanWrite] = React.useState(!!getToken());
 
- 
+  // Charger au mount
+  React.useEffect(() => {
+    dispatch(fetchProducts())
+      .unwrap()
+      .catch((err) => setErrorMsg(err.message));
+  }, [dispatch]);
+
+  // Reporter les erreurs de chargement Redux
+  React.useEffect(() => {
+    if (loadError) setErrorMsg(loadError);
+  }, [loadError]);
+
+
   React.useEffect(() => {
     if (getToken()) {
       connectSocket();
@@ -55,21 +76,22 @@ export default function ProductsPage() {
     return true;
   };
 
-  const fetchProducts = React.useCallback(async () => {
-    try {
-      setLoading(true);
-      const { data } = await http.get('/product'); // GET /api/product
-      setRows(Array.isArray(data) ? data.filter(Boolean).map(normalizeProduct) : []);
-    } catch (e) {
-      setErrorMsg(e.message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // const fetchProducts = React.useCallback(async () => {
+  //   try {
+  //     setLoading(true);
+  //     const { data } = await http.get('/product'); // GET /api/product
+  //     setRows(Array.isArray(data) ? data.filter(Boolean).map(normalizeProduct) : []);
+  //   } catch (e) {
+  //     setErrorMsg(e.message);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // }, []);
 
-  React.useEffect(() => { fetchProducts(); }, [fetchProducts]);
+  // React.useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
 
+  // --- WebSocket -> Redux ---
   React.useEffect(() => {
     const onConnect = () => console.log('connected', socket.id);
     const onDisconnect = () => console.log('disconnected');
@@ -80,25 +102,9 @@ export default function ProductsPage() {
       }
     });
 
-
-
-    const onCreated = (p) => {
-      const n = normalizeProduct(p);
-      if (n._id == null) return;
-      setRows(arr => replaceById(arr, n));
-    };
-
-    const onUpdated = (p) => {
-      const n = normalizeProduct(p);
-      if (n._id == null) return;
-      setRows(arr => replaceById(arr, n));
-    };
-
-    const onDeleted = ({ _id }) => {
-      const id = Number(_id);
-      if (!Number.isFinite(id)) return;
-      setRows(arr => arr.filter(x => x && Number(x._id) !== id));
-    };
+    const onCreated = (p) => dispatch(productsWs.wsCreated(p));
+    const onUpdated = (p) => dispatch(productsWs.wsUpdated(p));
+    const onDeleted = (p) => dispatch(productsWs.wsDeleted(p));
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
@@ -113,9 +119,9 @@ export default function ProductsPage() {
       socket.off('product:updated', onUpdated);
       socket.off('product:deleted', onDeleted);
     };
-  }, []);
+  }, [dispatch]);
 
-
+  // Les Actions
   const handleCreateClick = () => { if (!requireAuth()) return;
     setEditing(null); setOpenForm(true); };
 
@@ -123,29 +129,15 @@ export default function ProductsPage() {
     try {
       if (!requireAuth()) return;
 
-
       if (editing) {
-        // PATCH partiel
-        const id = editing._id;
-        const { data } = await http.patch(`/product/${id}`, payload);
-        const prod = normalizeProduct(data);
-        if (prod._id == null) throw new Error("PATCH: API n’a pas renvoyé _id");
-        setRows((arr) => replaceById(arr, prod));
+        await dispatch(updateProduct({ id: editing._id, changes: payload })).unwrap();
         setSuccessMsg('Produit mis à jour');
       } else {
-        const { data } = await http.post('/product', payload);
-        const prod = normalizeProduct(data);
-        if (prod._id == null) throw new Error("POST: API n’a pas renvoyé _id"); 
-        setRows((arr) => replaceById(arr, prod));
+        await dispatch(createProduct(payload)).unwrap();
         setSuccessMsg('Produit créé');
       }
       setOpenForm(false);
     } catch (e) {
-      if (e.code === 'unauthorized' || /401/.test(String(e.status))) {
-        setLoginOpen(true);
-        setErrorMsg('Veuillez vous reconnecter');
-        return;
-      }
       setErrorMsg(e.message);
     }
   };
@@ -155,18 +147,11 @@ export default function ProductsPage() {
   const handleDelete = (p) => { if (!requireAuth()) return; setConfirm({ open: true, product: p }); };
 
   const confirmDelete = async () => {
-    const p = confirm.product;
     try {
       if (!requireAuth()) return;
-      await http.delete(`/product/${p._id}`);
-      setRows((arr) => arr.filter((x) => x && x._id !== p._id));
+      await dispatch(deleteProduct(confirm.product._id)).unwrap();
       setSuccessMsg('Produit supprimé');
     } catch (e) {
-      if (e.code === 'unauthorized' || /401/.test(String(e.status))) {
-        setLoginOpen(true);
-        setErrorMsg('Veuillez vous reconnecter');
-        return;
-      }
       setErrorMsg(e.message);
     } finally {
       setConfirm({ open: false, product: null });
@@ -190,12 +175,12 @@ export default function ProductsPage() {
           </Stack>
         </Stack>
         <Divider sx={{ my: 2 }} />
-        {loading ? (
+        {status === 'loading' ? (
           <Typography variant="body2" color="text.secondary">Chargement…</Typography>
         ) : (
           <ProductTable
             rows={rows}
-            canWrite={canWrite}        // (optionnel) si tu gères l’affichage des actions dans la table
+            canWrite={canWrite}
             onEdit={handleEdit}
             onDelete={handleDelete}
           />
@@ -208,7 +193,7 @@ export default function ProductsPage() {
         onClose={() => setOpenForm(false)}
         onSubmit={handleSubmit}
         initial={editing || {}}
-        showId={!editing} // si ton backend exige _id à la création
+        showId={!editing}
       />
 
       <ConfirmDialog
