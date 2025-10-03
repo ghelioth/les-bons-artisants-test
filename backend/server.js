@@ -1,6 +1,9 @@
 const express = require("express");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
+const jwt = require("jsonwebtoken");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const productRoutes = require("./routes/product.routes");
 require("dotenv").config({ path: "./config/.env" });
 const cors = require("cors");
@@ -9,8 +12,10 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-// app.use("/product", productRoutes);
-
+app.use(helmet());
+app.use(
+  rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }) // 100 requêtes toutes les 15 minutes
+);
 //Healthcheck
 app.get("/health", (req, res) => res.json({ ok: true }));
 
@@ -39,6 +44,20 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () =>
     console.log("[WebSocket] : disconnected", socket.id)
   );
+});
+
+io.use((socket, next) => {
+  try {
+    const token =
+      socket.handshake.auth?.token ||
+      (socket.handshake.headers.authorization || "").replace(/^Bearer/, "");
+    if (!token) return next(new Error("Missing token"));
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    socket.user = payload;
+    next();
+  } catch (err) {
+    next(new Error("Invalid/expired token " + err));
+  }
 });
 
 // Démarre le server express
