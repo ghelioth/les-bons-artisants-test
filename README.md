@@ -36,14 +36,14 @@ transmet le token à Socket.IO (via socket.auth) pour une connexion WS protégé
 ouvre une modale LoginDialog quand l’API renvoie 401.
 
 # EndPoints
-Base URL : http://localhost:4000/api
-GET /product — liste des produits (public)
-GET /product/:id — détail produit (public)
-POST /product — protégé (JWT) — crée un produit
+ - Base URL : http://localhost:4000/api
+ - GET /product — liste des produits (public)
+ - GET /product/:id — détail produit (public)
+ - POST /product — protégé (JWT) — crée un produit
 payload attendu : { _id, name, type, price, rating, warranty_years, available }
-PATCH /product/:id — protégé (JWT) — met à jour partiellement
+ - PATCH /product/:id — protégé (JWT) — met à jour partiellement
 (retourne le document mis à jour, pas un UpdateResult)
-DELETE /product/:id — protégé (JWT) — supprime
+ - DELETE /product/:id — protégé (JWT) — supprime
 GET /health — simple healthcheck
 
 # Temps réel (Socket.IO)
