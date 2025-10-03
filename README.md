@@ -1,4 +1,4 @@
-***Test Technique – Produits (API Node + React, Socket.IO, JWT, Redux)***
+# Test Technique – Produits (API Node + React, Socket.IO, JWT, Redux)
 
 Ce dépôt contient :
 -Une API REST Node.js/Express + MongoDB (driver natif)
@@ -6,37 +6,36 @@ Ce dépôt contient :
 -Auth JWT (login / register)
 -ESLint + Prettier
 
-**Configuration**
+# Configuration
 Les variables d'environnement :
  - coté server dans backend/config/.env, les valeurs à renseigner :
-# client url
+ **client url**
 CLIENT_URL = 
-# port sur lequel le serveur écoute
+**port sur lequel le serveur écoute**
 PORT = 
-# connexion à la base de données
+**connexion à la base de données**
 MONGODB_URI = 
 MONGODB_DB_NAME =
-# secret pour le token
+**secret pour le token**
 JWT_SECRET = 
 JWT_EXPIRES_IN = 1h
 
  - coté client dans src/.env, les valeurs à renseigner :
-# API url 
+**API url** 
 VITE_API_URL=http://localhost:+port/api/
-# Websocket url 
+**Websocket url** 
 VITE_WS_URL=http://localhost:+port
-
-**Authentification**
+# Authentification
 POST /api/auth/register — crée un utilisateur et renvoie { token, user }
 POST /api/auth/login — connecte un utilisateur et renvoie { token, user }
 
-# Le front :
+**Le front :**
 stocke le token dans localStorage,
 envoie Authorization: Bearer <token> via un interceptor axios,
 transmet le token à Socket.IO (via socket.auth) pour une connexion WS protégée,
 ouvre une modale LoginDialog quand l’API renvoie 401.
 
-**EndPoints**
+# EndPoints
 Base URL : http://localhost:4000/api
 GET /product — liste des produits (public)
 GET /product/:id — détail produit (public)
@@ -47,7 +46,7 @@ PATCH /product/:id — protégé (JWT) — met à jour partiellement
 DELETE /product/:id — protégé (JWT) — supprime
 GET /health — simple healthcheck
 
-**Temps réel (Socket.IO)**
+# Temps réel (Socket.IO)
  - Le serveur émet :
     - product:created → { ...doc }
     - product:updated → { ...doc }
@@ -57,7 +56,7 @@ GET /health — simple healthcheck
 
  - Le token JWT est vérifié à la connexion WS (io.use(...) côté serveur).
 
-**Redux Toolkit**
+# Redux Toolkit
  - Slice : src/features/products/productsSlice.js
     - fetchProducts, createProduct, updateProduct, deleteProduct (thunks HTTP)
     - productsWs.wsCreated/Updated/Deleted (actions dispatchées par Socket.IO)
@@ -68,7 +67,7 @@ GET /health — simple healthcheck
     - CRUD → dispatch(createProduct|updateProduct|deleteProduct).unwrap()
     - WS → dispatch(productsWs.wsCreated/Updated/Deleted(payload))
 
-**Material UI**
+# Material UI
  - Material UI pour la table, les dialogues, les boutons.
  - ProductTable masque la colonne Actions si l’utilisateur n’est pas connecté (ouverture login à la demande).
  - ProductFormDialog gère création/édition (PATCH partiel côté API).
