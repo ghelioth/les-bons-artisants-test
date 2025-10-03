@@ -10,30 +10,30 @@ Ce dépôt contient :
 Les variables d'environnement :
  - coté server dans backend/config/.env, les valeurs à renseigner :
  **client url**
-CLIENT_URL = 
+    - CLIENT_URL = 
 **port sur lequel le serveur écoute**
-PORT = 
+    - PORT = 
 **connexion à la base de données**
-MONGODB_URI = 
-MONGODB_DB_NAME =
+    - MONGODB_URI = 
+    - MONGODB_DB_NAME =
 **secret pour le token**
-JWT_SECRET = 
-JWT_EXPIRES_IN = 1h
+    - JWT_SECRET = 
+    - JWT_EXPIRES_IN = 1h
 
  - coté client dans src/.env, les valeurs à renseigner :
-**API url** 
-VITE_API_URL=http://localhost:+port/api/
-**Websocket url** 
-VITE_WS_URL=http://localhost:+port
+ - **API url** 
+    - VITE_API_URL=http://localhost:+port/api/
+ - **Websocket url** 
+    - VITE_WS_URL=http://localhost:+port
 # Authentification
-POST /api/auth/register — crée un utilisateur et renvoie { token, user }
-POST /api/auth/login — connecte un utilisateur et renvoie { token, user }
+ - POST /api/auth/register — crée un utilisateur et renvoie { token, user }
+ - POST /api/auth/login — connecte un utilisateur et renvoie { token, user }
 
 **Le front :**
-stocke le token dans localStorage,
-envoie Authorization: Bearer <token> via un interceptor axios,
-transmet le token à Socket.IO (via socket.auth) pour une connexion WS protégée,
-ouvre une modale LoginDialog quand l’API renvoie 401.
+ - stocke le token dans localStorage,
+ - envoie Authorization: Bearer <token> via un interceptor axios,
+ - transmet le token à Socket.IO (via socket.auth) pour une connexion WS protégée,
+ - ouvre une modale LoginDialog quand l’API renvoie 401.
 
 # EndPoints
  - Base URL : http://localhost:+port/api
